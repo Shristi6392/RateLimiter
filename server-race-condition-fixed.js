@@ -5,8 +5,10 @@
  
 const express = require('express');
 const { createClient } = require('redis');
+const cors = require('cors');
  
 const app = express();
+app.use(cors());
  
 const LIMIT = 5;
 const WINDOW_SEC = 60;

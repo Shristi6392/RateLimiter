@@ -1,4 +1,4 @@
-// =========================================
+n// =========================================
 // SIMPLE RATE LIMITER - FIXED WINDOW ALGORITHM
 // Yeh sabse simple version hai - sab kuch memory mein store hota hai
 // =========================================

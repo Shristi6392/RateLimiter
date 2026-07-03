@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rate Limiter Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #f8fafc;
+    }
+
+    .subtitle {
+      color: #94a3b8;
+      margin-bottom: 32px;
+      font-size: 14px;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .card {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid #334155;
+    }
+
+    .card-label {
+      font-size: 12px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+
+    .card-value {
+      font-size: 36px;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+
+    .card-value.green { color: #4ade80; }
+    .card-value.red   { color: #f87171; }
+    .card-value.blue  { color: #60a5fa; }
+    .card-value.yellow{ color: #fbbf24; }
+
+    .card-sub {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 4px;
+    }
+
+    .grid2 {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .panel {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid #334155;
+    }
+
+    .panel h2 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #cbd5e1;
+    }
+
+    .user-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid #1e293b;
+    }
+
+    .user-row:last-child { border-bottom: none; }
+
+    .user-name {
+      font-size: 14px;
+      color: #e2e8f0;
+      font-weight: 500;
+    }
+
+    .progress-bar {
+      width: 120px;
+      height: 6px;
+      background: #334155;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+
+    .badge {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+
+    .badge.allowed { background: #166534; color: #4ade80; }
+    .badge.blocked { background: #7f1d1d; color: #f87171; }
+
+    .log-area {
+      background: #0f172a;
+      border-radius: 8px;
+      padding: 12px;
+      height: 200px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 12px;
+    }
+
+    .log-line { padding: 2px 0; }
+    .log-line.allowed { color: #4ade80; }
+    .log-line.blocked { color: #f87171; }
+    .log-line.info    { color: #60a5fa; }
+
+    .test-section {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid #334155;
+      margin-bottom: 16px;
+    }
+
+    .test-section h2 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #cbd5e1;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 12px;
+      align-items: center;
+    }
+
+    input {
+      background: #0f172a;
+      border: 1px solid #334155;
+      color: #e2e8f0;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      width: 200px;
+    }
+
+    button {
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    button:hover { opacity: 0.85; }
+
+    .btn-green  { background: #16a34a; color: white; }
+    .btn-red    { background: #dc2626; color: white; }
+    .btn-blue   { background: #2563eb; color: white; }
+    .btn-yellow { background: #d97706; color: white; }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #4ade80;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .status-text { font-size: 13px; color: #94a3b8; }
+  </style>
+</head>
+<body>
+
+  <h1>⚡ Rate Limiter Dashboard</h1>
+  <p class="subtitle">Real-time monitoring — Redis + Lua Script (Distributed)</p>
+
+  <div class="status-bar">
+    <div class="dot"></div>
+    <span class="status-text">Live — updates every 2 seconds</span>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="cards">
+    <div class="card">
+      <div class="card-label">Total Requests</div>
+      <div class="card-value blue" id="total">0</div>
+      <div class="card-sub">since server start</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Allowed</div>
+      <div class="card-value green" id="allowed">0</div>
+      <div class="card-sub">successfully served</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Blocked</div>
+      <div class="card-value red" id="blocked">0</div>
+      <div class="card-sub">rate limited</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Block Rate</div>
+      <div class="card-value yellow" id="blockRate">0%</div>
+      <div class="card-sub">of total requests</div>
+    </div>
+  </div>
+
+  <!-- Chart + Users -->
+  <div class="grid2">
+    <div class="panel">
+      <h2>📈 Requests Over Time</h2>
+      <canvas id="chart" height="120"></canvas>
+    </div>
+    <div class="panel">
+      <h2>👥 Active Users</h2>
+      <div id="userList">
+        <p style="color:#64748b;font-size:13px;">Make some requests to see users here!</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Test Controls -->
+  <div class="test-section">
+    <h2>🧪 Test Controls</h2>
+    <div class="input-row">
+      <input type="text" id="userId" value="Shristi" placeholder="User ID">
+      <button class="btn-green" onclick="makeRequest()">Send Request</button>
+      <button class="btn-blue" onclick="sendBurst()">Send 10 at once (Burst)</button>
+      <button class="btn-red" onclick="resetUser()">Reset User</button>
+    </div>
+  </div>
+
+  <!-- Live Log -->
+  <div class="panel">
+    <h2>📋 Live Request Log</h2>
+    <div class="log-area" id="log"></div>
+  </div>
+
+  <script>
+    const API = 'http://localhost:3000';
+    let stats = { total: 0, allowed: 0, blocked: 0 };
+    let users = {};
+    let chartData = { labels: [], allowed: [], blocked: [] };
+
+    // ====== Chart Setup ======
+    const ctx = document.getElementById('chart').getContext('2d');
+    const chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: chartData.labels,
+        datasets: [
+          {
+            label: 'Allowed',
+            data: chartData.allowed,
+            borderColor: '#4ade80',
+            backgroundColor: 'rgba(74,222,128,0.1)',
+            tension: 0.4,
+            fill: true
+          },
+          {
+            label: 'Blocked',
+            data: chartData.blocked,
+            borderColor: '#f87171',
+            backgroundColor: 'rgba(248,113,113,0.1)',
+            tension: 0.4,
+            fill: true
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: '#94a3b8' } } },
+        scales: {
+          x: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' } },
+          y: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' } }
+        }
+      }
+    });
+
+    // ====== Make Request ======
+    async function makeRequest() {
+      const userId = document.getElementById('userId').value || 'Shristi';
+
+      try {
+        const res = await fetch(`${API}/api/data?user=${userId}`);
+        const data = await res.json();
+
+        const allowed = res.status === 200;
+        stats.total++;
+        allowed ? stats.allowed++ : stats.blocked++;
+
+        // Track user
+        if (!users[userId]) users[userId] = { allowed: 0, blocked: 0 };
+        allowed ? users[userId].allowed++ : users[userId].blocked++;
+
+        // Update UI
+        updateCards();
+        updateUserList();
+        addLog(userId, allowed, data);
+
+      } catch (err) {
+        addLog('system', false, { error: 'Cannot connect to server! Is it running?' });
+      }
+    }
+
+    // ====== Send Burst ======
+    async function sendBurst() {
+      const userId = document.getElementById('userId').value || 'Shristi';
+      addLog('system', true, { message: `Sending 10 requests at once for ${userId}...` }, 'info');
+
+      const promises = [];
+      for (let i = 0; i < 10; i++) {
+        promises.push(makeRequest());
+      }
+      await Promise.all(promises);
+    }
+
+    // ====== Reset User ======
+    async function resetUser() {
+      const userId = document.getElementById('userId').value || 'Shristi';
+      await fetch(`${API}/api/reset?user=${userId}`);
+      if (users[userId]) users[userId] = { allowed: 0, blocked: 0 };
+      addLog('system', true, { message: `Counter reset for ${userId}` }, 'info');
+      updateUserList();
+    }
+
+    // ====== Update Cards ======
+    function updateCards() {
+      document.getElementById('total').textContent = stats.total;
+      document.getElementById('allowed').textContent = stats.allowed;
+      document.getElementById('blocked').textContent = stats.blocked;
+      const rate = stats.total > 0
+        ? Math.round((stats.blocked / stats.total) * 100)
+        : 0;
+      document.getElementById('blockRate').textContent = `${rate}%`;
+    }
+
+    // ====== Update User List ======
+    function updateUserList() {
+      const list = document.getElementById('userList');
+      if (Object.keys(users).length === 0) return;
+
+      list.innerHTML = Object.entries(users).map(([id, data]) => {
+        const total = data.allowed + data.blocked;
+        const pct = total > 0 ? Math.round((data.allowed / 5) * 100) : 0;
+        const status = data.blocked > 0 ? 'blocked' : 'allowed';
+        return `
+          <div class="user-row">
+            <span class="user-name">👤 ${id}</span>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width:${Math.min(pct,100)}%;background:${pct>=100?'#f87171':'#4ade80'}"></div>
+            </div>
+            <span class="badge ${status}">${data.allowed}/${5} used</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ====== Add Log Line ======
+    function addLog(userId, allowed, data, type = null) {
+      const log = document.getElementById('log');
+      const time = new Date().toLocaleTimeString();
+      let cls = type || (allowed ? 'allowed' : 'blocked');
+      let icon = type === 'info' ? 'ℹ️' : allowed ? '✅' : '❌';
+      let msg = data.message || data.error || JSON.stringify(data);
+
+      const line = document.createElement('div');
+      line.className = `log-line ${cls}`;
+      line.textContent = `[${time}] ${icon} ${userId}: ${msg}`;
+      log.prepend(line);
+
+      // Keep only last 50 logs
+      while (log.children.length > 50) {
+        log.removeChild(log.lastChild);
+      }
+    }
+
+    // ====== Update Chart every 5 seconds ======
+    function updateChart() {
+      const time = new Date().toLocaleTimeString();
+      chartData.labels.push(time);
+      chartData.allowed.push(stats.allowed);
+      chartData.blocked.push(stats.blocked);
+
+      // Keep last 10 points
+      if (chartData.labels.length > 10) {
+        chartData.labels.shift();
+        chartData.allowed.shift();
+        chartData.blocked.shift();
+      }
+
+      chart.update();
+    }
+
+    setInterval(updateChart, 5000);
+    addLog('system', true, { message: 'Dashboard started! Make some requests to see data.' }, 'info');
+  </script>
+</body>
+</html>
