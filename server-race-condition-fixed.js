@@ -1,7 +1,6 @@
 // =========================================
 // RACE CONDITION - FIXED VERSION
-// Using Lua Script - 100% Atomic!
-// All operations happen in ONE step in Redis
+// With Industry Standard Rate Limit Headers!
 // =========================================
  
 const express = require('express');
@@ -19,22 +18,17 @@ const redisClient = createClient({
 redisClient.on('error', (err) => console.log('Redis Error:', err));
  
 // ====== LUA SCRIPT - 100% Atomic ======
-// This entire block runs as ONE operation in Redis
-// No other server can interfere - guaranteed!
 const luaScript = `
   local key = KEYS[1]
   local limit = tonumber(ARGV[1])
   local window = tonumber(ARGV[2])
   
-  -- Increment counter
   local count = redis.call('INCR', key)
   
-  -- Set expiry on first request
   if count == 1 then
     redis.call('EXPIRE', key, window)
   end
   
-  -- Return count
   return count
 `;
  
@@ -47,34 +41,84 @@ async function isAllowed(userId) {
     arguments: [LIMIT.toString(), WINDOW_SEC.toString()]
   });
  
+  // Get TTL - time remaining before reset
+  const ttl = await redisClient.ttl(key);
+ 
+  // Calculate reset timestamp
+  const resetTime = Math.floor(Date.now() / 1000) + ttl;
+ 
+  // Calculate remaining requests
+  const remaining = Math.max(0, LIMIT - count);
+ 
   if (count <= LIMIT) {
-    console.log(`[ALLOWED] ${userId} - ${count}/${LIMIT}`);
-    return { allowed: true, count };
+    console.log(`[ALLOWED] ${userId} - ${count}/${LIMIT} - remaining: ${remaining}`);
+    return { allowed: true, count, remaining, resetTime, ttl };
   } else {
-    const ttl = await redisClient.ttl(key);
-    console.log(`[BLOCKED] ${userId} - ${count}/${LIMIT}`);
-    return { allowed: false, count, retryAfter: ttl };
+    console.log(`[BLOCKED] ${userId} - ${count}/${LIMIT} - retry after: ${ttl}s`);
+    return { allowed: false, count, remaining: 0, resetTime, ttl };
   }
 }
  
+// ====== Helper: Add headers to every response ======
+function addRateLimitHeaders(res, result) {
+  res.set({
+    'X-RateLimit-Limit': LIMIT,              // Total limit
+    'X-RateLimit-Remaining': result.remaining, // Requests left
+    'X-RateLimit-Reset': result.resetTime,    // When it resets (Unix timestamp)
+    'X-RateLimit-Used': result.count,         // How many used
+    'Retry-After': result.ttl                 // Seconds to wait if blocked
+  });
+}
+ 
+// ====== API ROUTES ======
 app.get('/api/data', async (req, res) => {
   const userId = req.query.user || 'anonymous';
   const result = await isAllowed(userId);
  
+  // Add headers to EVERY response (allowed or blocked)
+  addRateLimitHeaders(res, result);
+ 
   if (result.allowed) {
     res.status(200).json({
-      message: 'Allowed!',
-      count: result.count,
-      limit: LIMIT
+      message: 'Success! Here is your data.',
+      rateLimit: {
+        limit: LIMIT,
+        used: result.count,
+        remaining: result.remaining,
+        resetsIn: `${result.ttl} seconds`
+      }
     });
   } else {
     res.status(429).json({
-      error: 'Blocked!',
-      retryAfter: `${result.retryAfter} seconds`
+      error: 'Too Many Requests!',
+      rateLimit: {
+        limit: LIMIT,
+        used: result.count,
+        remaining: 0,
+        resetsIn: `${result.ttl} seconds`
+      }
     });
   }
 });
  
+// Check status
+app.get('/api/status', async (req, res) => {
+  const userId = req.query.user || 'anonymous';
+  const key = `ratelimit_lua:${userId}`;
+  const count = await redisClient.get(key);
+  const ttl = await redisClient.ttl(key);
+  const used = count ? parseInt(count) : 0;
+ 
+  res.json({
+    userId,
+    limit: LIMIT,
+    used,
+    remaining: Math.max(0, LIMIT - used),
+    resetsIn: ttl > 0 ? `${ttl} seconds` : 'No active window',
+  });
+});
+ 
+// Reset counter
 app.get('/api/reset', async (req, res) => {
   const userId = req.query.user || 'anonymous';
   const key = `ratelimit_lua:${userId}`;
@@ -82,28 +126,17 @@ app.get('/api/reset', async (req, res) => {
   res.json({ message: `Counter reset for ${userId}` });
 });
  
-app.get('/api/actual-count', async (req, res) => {
-  const userId = req.query.user || 'anonymous';
-  const key = `ratelimit_lua:${userId}`;
-  const count = await redisClient.get(key);
-  res.json({
-    userId,
-    actualCountInRedis: count ? parseInt(count) : 0,
-    limit: LIMIT,
-    message: count > LIMIT ? `⚠️ Problem! ${count} > ${LIMIT}` : `✅ Correct: ${count}/${LIMIT}`
-  });
-});
- 
+// Start Server
 async function startServer() {
   await redisClient.connect();
   console.log('✅ Redis connected!');
  
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => {
-    console.log(`✅ FIXED server (Lua Script) running at: http://localhost:${PORT}`);
+    console.log(`✅ Server with Rate Limit Headers running at: http://localhost:${PORT}`);
     console.log(`Test: http://localhost:${PORT}/api/data?user=raj`);
+    console.log(`Status: http://localhost:${PORT}/api/status?user=raj`);
     console.log(`Reset: http://localhost:${PORT}/api/reset?user=raj`);
-    console.log(`Check count: http://localhost:${PORT}/api/actual-count?user=raj`);
   });
 }
  
