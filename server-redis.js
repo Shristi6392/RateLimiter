@@ -99,7 +99,7 @@ async function startServer() {
   console.log('✅ Redis connected successfully!');
 
   // Then start Express server
-  const PORT = 3000;
+  const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => {
     console.log(`✅ Server running at: http://localhost:${PORT}`);
     console.log(`Test it: http://localhost:${PORT}/api/data?user=raj`);
