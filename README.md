@@ -1,6 +1,29 @@
 # Distributed Rate Limiter
 
-A production-grade distributed rate limiter built with Node.js and Redis, implementing multiple algorithms with race condition handling.
+A production-grade distributed rate limiter built with **Node.js** and **Redis**, 
+implementing multiple rate limiting algorithms with race condition detection and 
+resolution. Inspired by real-world systems used at **Stripe**, **Twitter**, 
+**GitHub**, and **AWS**.
+
+## 💡 Problem Statement
+
+When thousands of users hit an API simultaneously, servers can crash, resources 
+get exhausted, and malicious bots can abuse the system. Rate limiting is the 
+industry-standard solution — but building one that works correctly across 
+**multiple servers simultaneously** is a genuine distributed systems challenge.
+
+This project solves exactly that.
+
+## 🧩 The Core Challenge
+
+Single-server rate limiting is easy. The hard part:
+
+> *"What happens when 10,000 requests hit 3 different servers at the exact 
+> same millisecond? How do you ensure the limit is respected across ALL servers?"*
+
+This is the **distributed rate limiting problem** — solved here using Redis as 
+a shared atomic counter with Lua scripting.
+
 
 ## 🚀 What This Project Does
 
