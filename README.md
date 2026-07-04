@@ -8,6 +8,20 @@ Protects APIs from abuse by limiting how many requests a user can make in a give
 
 ---
 
+## 🌐 Live Demo
+
+| | Link |
+|---|---|
+| 🚀 API Backend | https://ratelimiter-757x.onrender.com |
+| 📊 Dashboard | https://shristi6392.github.io/RateLimiter/dashboard.html |
+
+### Quick Test
+```
+GET https://ratelimiter-757x.onrender.com/api/data?user=Shristi
+GET https://ratelimiter-757x.onrender.com/api/status?user=Shristi
+GET https://ratelimiter-757x.onrender.com/api/reset?user=Shristi
+```
+
 ## 📊 Benchmark Results
 
 Tested with 50 concurrent requests (limit: 5 per minute):
