@@ -15,6 +15,16 @@ Protects APIs from abuse by limiting how many requests a user can make in a give
 | 🚀 API Backend | https://ratelimiter-757x.onrender.com |
 | 📊 Dashboard | https://shristi6392.github.io/RateLimiter/dashboard.html |
 
+## 📸 Dashboard Preview
+
+<img width="1892" height="377" alt="image" src="https://github.com/user-attachments/assets/d63b9baf-a55b-4373-b316-8bcf60605051" />
+
+<img width="1890" height="627" alt="image" src="https://github.com/user-attachments/assets/e091e8d0-56f6-4c6b-a515-160bbadc725f" />
+
+<img width="1892" height="576" alt="image" src="https://github.com/user-attachments/assets/786a36bd-5847-4b01-b5c9-949d2f90f094" />
+
+
+
 ### Quick Test
 ```
 GET https://ratelimiter-757x.onrender.com/api/data?user=Shristi
@@ -212,3 +222,19 @@ rate-limiter/
 ## 📈 Resume Impact
 
 > *"Built a distributed rate limiter supporting fixed-window, sliding-window, and token-bucket algorithms using Redis; resolved race conditions via Lua scripting, achieving 15ms avg latency with 100% accuracy across 50 concurrent requests on multiple server instances."*
+> ## 📸 Dashboard Preview
+
+
+
+## 🎯 Project Highlights
+
+- ⚡ **15ms** average latency
+- 🎯 **100%** accuracy under concurrent load
+- 🔒 **Zero** race conditions with Lua scripting
+- 📊 **Real-time** monitoring dashboard
+- 🌐 **Distributed** across multiple servers
+
+## 👩‍💻 Author
+
+**Shristi** — [@Shristi6392](https://github.com/Shristi6392)
+
