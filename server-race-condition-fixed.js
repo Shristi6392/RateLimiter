@@ -14,7 +14,7 @@ const LIMIT = 5;
 const WINDOW_SEC = 60;
  
 const redisClient = createClient({
-  socket: { host: 'localhost', port: 6379 }
+  url: process.env.REDIS_URL || 'redis://localhost:6379'
 });
  
 redisClient.on('error', (err) => console.log('Redis Error:', err));
